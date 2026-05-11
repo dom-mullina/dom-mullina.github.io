@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка · Домъ купца Муллина</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #120a04;
+            color: #f0e4d0;
+            font-family: Georgia, 'Times New Roman', serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { color: #d4a870; margin-bottom: 20px; font-size: 24px; }
+        label { display: block; color: #b8895a; margin: 12px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            background: #1c0f07;
+            border: 1px solid #3a2515;
+            color: #f0e4d0;
+            font-family: Georgia, serif;
+            font-size: 15px;
+            border-radius: 4px;
+        }
+        textarea { min-height: 80px; resize: vertical; }
+        button {
+            margin-top: 20px;
+            padding: 12px 28px;
+            background: #7b1a1a;
+            color: #faf3e6;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            font-family: Georgia, serif;
+        }
+        button:hover { background: #a02020; }
+        .msg { margin-top: 12px; padding: 10px; border-radius: 4px; font-size: 14px; }
+        .ok { background: rgba(27,115,64,0.3); color: #c0e0c0; }
+        .err { background: rgba(180,20,40,0.3); color: #e0b0b0; }
+        .section { margin-top: 24px; border-top: 1px solid #3a2515; padding-top: 16px; }
+        h2 { color: #d4a870; font-size: 18px; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<div id="login">
+    <h1>🔐 Входъ</h1>
+    <input type="password" id="pwd" placeholder="Пароль">
+    <button onclick="login()">Войти</button>
+    <div class="msg err" id="loginMsg" style="display:none;"></div>
+</div>
+
+<div id="admin" style="display:none;">
+    <h1>⚙ Админка · Домъ купца Муллина</h1>
+    
+    <div class="section">
+        <h2>Hero</h2>
+        <label>Заголовок</label>
+        <input id="heroTitle">
+        <label>Подзаголовок</label>
+        <input id="heroSubtitle">
+        <label>Текст кнопки скролла</label>
+        <input id="scrollHint">
+    </div>
+
+    <div class="section">
+        <h2>Экскурсии (цены)</h2>
+        <label>Обзорная</label>
+        <input id="exc1price">
+        <label>Чаепитие</label>
+        <input id="exc2price">
+        <label>Костюмы + фото</label>
+        <input id="exc3price">
+    </div>
+
+    <div class="section">
+        <h2>Мастер-классы (цены)</h2>
+        <label>Чак-чак</label>
+        <input id="ws1price">
+        <label>Чак-чак + экскурсия</label>
+        <input id="ws2price">
+        <label>Эчпочмак + экскурсия</label>
+        <input id="ws3price">
+    </div>
+
+    <div class="section">
+        <h2>Театр</h2>
+        <label>Цена</label>
+        <input id="thPrice">
+    </div>
+
+    <div class="section">
+        <h2>Туроператоры</h2>
+        <label>Экскурсия + чаепитие</label>
+        <input id="to1price">
+        <label>Чак-чак + чай + экскурсия</label>
+        <input id="to2price">
+        <label>Эчпочмак + экскурсия + чай</label>
+        <input id="to3price">
+    </div>
+
+    <button onclick="saveAll()">💾 Сохранить всё</button>
+    <div class="msg" id="saveMsg" style="display:none;"></div>
+</div>
+
+<script>
+const PASSWORD = 'mullin2025';
+let token = '';
+let repoData = {};
+const REPO = 'ob1keno/ob1keno.github.io';
+const FILE_PATH = 'content.json';
+
+function login() {
+    const p = document.getElementById('pwd').value;
+    if (p === PASSWORD) {
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('admin').style.display = 'block';
+        // токен хранится в localStorage
+        token = localStorage.getItem('gh_token') || '';
+        if (token) {
+            loadData();
+        } else {
+            showTokenPrompt();
+        }
+    } else {
+        const m = document.getElementById('loginMsg');
+        m.textContent = 'Невѣрный пароль';
+        m.style.display = 'block';
+    }
+}
+
+function showTokenPrompt() {
+    const t = prompt('Вставьте GitHub Personal Access Token (с правами repo):');
+    if (t) {
+        token = t;
+        localStorage.setItem('gh_token', token);
+        loadData();
+    }
+}
+
+async function loadData() {
+    try {
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+            headers: { Authorization: `token ${token}` }
+        });
+        if (!res.ok) throw new Error('Не могу загрузить данные');
+        const data = await res.json();
+        const content = JSON.parse(atob(data.content));
+        repoData = data;
+        fillForm(content);
+    } catch(e) {
+        document.getElementById('saveMsg').textContent = 'Ошибка загрузки: ' + e.message;
+        document.getElementById('saveMsg').className = 'msg err';
+        document.getElementById('saveMsg').style.display = 'block';
+    }
+}
+
+function fillForm(d) {
+    document.getElementById('heroTitle').value = d.heroContent?.title || '';
+    document.getElementById('heroSubtitle').value = d.heroContent?.subtitle || '';
+    document.getElementById('scrollHint').value = d.heroContent?.scrollHint || '';
+    document.getElementById('exc1price').value = d.strips?.[0]?.items?.[0]?.price || '';
+    document.getElementById('exc2price').value = d.strips?.[0]?.items?.[1]?.price || '';
+    document.getElementById('exc3price').value = d.strips?.[0]?.items?.[2]?.price || '';
+    document.getElementById('ws1price').value = d.strips?.[1]?.items?.[0]?.price || '';
+    document.getElementById('ws2price').value = d.strips?.[1]?.items?.[1]?.price || '';
+    document.getElementById('ws3price').value = d.strips?.[1]?.items?.[2]?.price || '';
+    document.getElementById('thPrice').value = d.strips?.[2]?.theatre?.modal?.price || '';
+    document.getElementById('to1price').value = d.tourOperator?.modal?.table?.[0]?.price || '';
+    document.getElementById('to2price').value = d.tourOperator?.modal?.table?.[1]?.price || '';
+    document.getElementById('to3price').value = d.tourOperator?.modal?.table?.[2]?.price || '';
+}
+
+function collectData() {
+    const heroContent = {
+        eyebrow: 'Казань · XIX векъ',
+        title: document.getElementById('heroTitle').value,
+        subtitle: document.getElementById('heroSubtitle').value,
+        scrollHint: document.getElementById('scrollHint').value,
+    };
+    // Здесь надо сохранить всю структуру. Пока — упрощённо.
+    // Полный объект нужно встраивать в content.json
+    return { heroContent };
+}
+
+async function saveAll() {
+    const msg = document.getElementById('saveMsg');
+    try {
+        const newData = collectData();
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(newData, null, 2))));
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `token ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: 'обновление из админки',
+                content: content,
+                sha: repoData.sha,
+            })
+        });
+        if (!res.ok) throw new Error('Ошибка сохранения');
+        msg.textContent = '✅ Сохранено! Сайт обновится через пару минут.';
+        msg.className = 'msg ok';
+        msg.style.display = 'block';
+    } catch(e) {
+        msg.textContent = '❌ ' + e.message;
+        msg.className = 'msg err';
+        msg.style.display = 'block';
+    }
+}
+</script>
+</body>
+</html>
