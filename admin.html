@@ -150,7 +150,9 @@ async function loadData() {
         });
         if (!res.ok) throw new Error('Не могу загрузить данные');
         const data = await res.json();
-        const content = JSON.parse(atob(data.content));
+        // Правильное декодирование кириллицы
+        const decoded = decodeURIComponent(escape(atob(data.content)));
+        const content = JSON.parse(decoded);
         repoData = data;
         fillForm(content);
     } catch(e) {
@@ -159,7 +161,6 @@ async function loadData() {
         document.getElementById('saveMsg').style.display = 'block';
     }
 }
-
 function fillForm(d) {
     document.getElementById('heroTitle').value = d.heroContent?.title || '';
     document.getElementById('heroSubtitle').value = d.heroContent?.subtitle || '';
